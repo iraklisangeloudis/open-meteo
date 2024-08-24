@@ -1,6 +1,7 @@
 import Foundation
 @testable import App
 import XCTest
+//import NIOFileSystem
 
 
 final class DataTests: XCTestCase {
@@ -10,6 +11,17 @@ final class DataTests: XCTestCase {
         FileManager.default.changeCurrentDirectoryPath(projectHome)
         #endif
     }
+    
+    /*func testGribStream() async throws {
+        let url = "/Users/patrick/Downloads/_mars-bol-webmars-private-svc-blue-009-d4755d5b313f7cded016e66ba0cd989b-hyELHH.grib"
+        let fileSystem = FileSystem.shared
+        
+        try await fileSystem.withFileHandle(forReadingAt: FilePath(url)) { fn in
+            for try await message in fn.readChunks().decodeGrib() {
+                print(message.get(attribute: "shortName")!)
+            }
+        }
+    }*/
     
     func testDem90() throws {
         try XCTSkipUnless(FileManager.default.fileExists(atPath: DomainRegistry.copernicus_dem90.directory), "Elevation information unavailable")
@@ -121,6 +133,27 @@ final class DataTests: XCTestCase {
         
         XCTAssertEqual(nam.getCoordinates(gridpoint: 40000).latitude, 24.007414634071907, accuracy: 0.001)
         XCTAssertEqual(nam.getCoordinates(gridpoint: 40000).longitude, 248.77817290935954 - 360, accuracy: 0.001)
+    }
+    
+    func testLambertAzimuthalEqualAreaProjection() {
+        let proj = LambertAzimuthalEqualAreaProjection(λ0: -2.5, ϕ1: 54.9, radius: 6371229)
+        let grid = ProjectionGrid(nx: 1042, ny: 970, latitudeProjectionOrigion: -1036000, longitudeProjectionOrigion: -1158000, dx: 2000, dy: 2000, projection: proj)
+        // peak north denmark 57.745566, 10.620785
+        let coords = proj.forward(latitude: 57.745566, longitude: 10.620785)
+        XCTAssertEqual(coords.x, 773650.5, accuracy: 0.0001) // around 774000.0
+        XCTAssertEqual(coords.y, 389820.06, accuracy: 0.0001) // around 378000
+        
+        let r = proj.inverse(x: 773650.5, y: 389820.06)
+        XCTAssertEqual(r.longitude, 10.620785, accuracy: 0.0001)
+        XCTAssertEqual(r.latitude, 57.745566, accuracy: 0.0001)
+        
+        let coords2 = grid.findPointXy(lat: 57.745566, lon: 10.620785)!
+        XCTAssertEqual(coords2.x, 966)
+        XCTAssertEqual(coords2.y, 713)
+        
+        let r2 = grid.getCoordinates(gridpoint: 966 + 713 * grid.nx)
+        XCTAssertEqual(r2.longitude, 10.6271515, accuracy: 0.0001)
+        XCTAssertEqual(r2.latitude, 57.746563, accuracy: 0.0001)
     }
     
     func testLambertCC() {

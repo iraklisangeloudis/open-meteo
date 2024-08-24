@@ -30,7 +30,11 @@ public struct EnsembleApiController {
                 guard let reader = try readerAndDomain.reader() else {
                     return nil
                 }
+                let hourlyDt = (params.temporal_resolution ?? .hourly).dtSeconds ?? reader.modelDtSeconds
+                let timeHourlyRead = time.hourlyRead.with(dtSeconds: hourlyDt)
+                let timeHourlyDisplay = time.hourlyDisplay.with(dtSeconds: hourlyDt)
                 let domain = readerAndDomain.domain
+                
                 return .init(
                     model: domain,
                     latitude: reader.modelLat,
@@ -40,7 +44,7 @@ public struct EnsembleApiController {
                         if let hourlyVariables = paramsHourly {
                             for variable in hourlyVariables {
                                 for member in 0..<reader.domain.countEnsembleMember {
-                                    try reader.prefetchData(variable: variable, time: time.hourlyRead.toSettings(ensembleMemberLevel: member))
+                                    try reader.prefetchData(variable: variable, time: timeHourlyRead.toSettings(ensembleMemberLevel: member))
                                 }
                             }
                         }
@@ -48,18 +52,18 @@ public struct EnsembleApiController {
                     current: nil,
                     hourly: paramsHourly.map { variables in
                         return {
-                            return .init(name: "hourly", time: time.hourlyDisplay, columns: try variables.map { variable in
+                            return .init(name: "hourly", time: timeHourlyDisplay, columns: try variables.map { variable in
                                 var unit: SiUnit? = nil
                                 let allMembers: [ApiArray] = try (0..<reader.domain.countEnsembleMember).compactMap { member in
-                                    guard let d = try reader.get(variable: variable, time: time.hourlyRead.toSettings(ensembleMemberLevel: member))?.convertAndRound(params: params) else {
+                                    guard let d = try reader.get(variable: variable, time: timeHourlyRead.toSettings(ensembleMemberLevel: member))?.convertAndRound(params: params) else {
                                         return nil
                                     }
                                     unit = d.unit
-                                    assert(time.hourlyRead.count == d.data.count)
+                                    assert(timeHourlyRead.count == d.data.count)
                                     return ApiArray.float(d.data)
                                 }
                                 guard allMembers.count > 0 else {
-                                    return ApiColumn(variable: variable.resultVariable, unit: .undefined, variables: .init(repeating: ApiArray.float([Float](repeating: .nan, count: time.hourlyRead.count)), count: reader.domain.countEnsembleMember))
+                                    return ApiColumn(variable: variable.resultVariable, unit: .undefined, variables: .init(repeating: ApiArray.float([Float](repeating: .nan, count: timeHourlyRead.count)), count: reader.domain.countEnsembleMember))
                                 }
                                 return .init(variable: variable.resultVariable, unit: unit ?? .undefined, variables: allMembers)
                             })
@@ -82,12 +86,14 @@ public struct EnsembleApiController {
 }
 
 extension EnsembleVariableWithoutMember {
-    var resultVariable: ForecastapiResult<EnsembleMultiDomains>.SurfaceAndPressureVariable {
+    var resultVariable: ForecastapiResult<EnsembleMultiDomains>.SurfacePressureAndHeightVariable {
         switch self {
         case .pressure(let p):
             return .pressure(.init(p.variable, p.level))
         case .surface(let s):
             return .surface(s)
+        case .height(let s):
+            return .height(.init(s.variable, s.level))
         }
     }
 }
@@ -294,7 +300,7 @@ struct EnsemblePressureVariable: PressureVariableRespresentable, GenericVariable
     }
 }
 
-typealias EnsembleVariableWithoutMember = SurfaceAndPressureVariable<EnsembleSurfaceVariable, EnsemblePressureVariable>
+typealias EnsembleVariableWithoutMember = SurfacePressureAndHeightVariable<EnsembleSurfaceVariable, EnsemblePressureVariable, ForecastHeightVariable>
 
 typealias EnsembleVariable = EnsembleVariableWithoutMember
 

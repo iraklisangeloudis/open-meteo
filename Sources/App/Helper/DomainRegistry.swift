@@ -19,6 +19,7 @@ enum DomainRegistry: String, CaseIterable {
     case copernicus_dem90
     case copernicus_cerra
     case copernicus_era5
+    case copernicus_era5_ensemble
     case copernicus_era5_daily
     case copernicus_era5_land
     case copernicus_era5_land_daily
@@ -68,6 +69,9 @@ enum DomainRegistry: String, CaseIterable {
     case ecmwf_aifs025
     case ecmwf_wam025
     case ecmwf_wam025_ensemble
+    case ecmwf_ifs_analysis
+    case ecmwf_ifs_analysis_long_window
+    case ecmwf_ifs_long_window
     
     case jma_msm
     case jma_gsm
@@ -97,6 +101,9 @@ enum DomainRegistry: String, CaseIterable {
     case knmi_harmonie_arome_netherlands
     case dmi_harmonie_arome_europe
     
+    case ukmo_global_deterministic_10km
+    case ukmo_uk_deterministic_2km
+    
     var directory: String {
         return "\(OpenMeteo.dataDirectory)\(rawValue)/"
     }
@@ -125,12 +132,20 @@ enum DomainRegistry: String, CaseIterable {
             return Dem90()
         case .ecmwf_ifs:
             return CdsDomain.ecmwf_ifs
+        case .ecmwf_ifs_analysis_long_window:
+            return CdsDomain.ecmwf_ifs_analysis_long_window
+        case .ecmwf_ifs_analysis:
+            return CdsDomain.ecmwf_ifs_analysis
+        case .ecmwf_ifs_long_window:
+            return CdsDomain.ecmwf_ifs_long_window
         case .copernicus_era5:
             return CdsDomain.era5
         case .copernicus_era5_land:
             return CdsDomain.era5_land
         case .copernicus_era5_ocean:
             return CdsDomain.era5_ocean
+        case .copernicus_era5_ensemble:
+            return CdsDomain.era5_ensemble
         case .dwd_ewam:
             return IconWaveDomain.ewam
         case .cmc_gem_gdps:
@@ -257,6 +272,10 @@ enum DomainRegistry: String, CaseIterable {
             return KnmiDomain.harmonie_arome_netherlands
         case .dmi_harmonie_arome_europe:
             return DmiDomain.harmonie_arome_europe
+        case .ukmo_global_deterministic_10km:
+            return UkmoDomain.global_deterministic_10km
+        case .ukmo_uk_deterministic_2km:
+            return UkmoDomain.uk_deterministic_2km
         }
     }
 }

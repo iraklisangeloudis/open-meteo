@@ -206,9 +206,22 @@ struct DmiDownload: AsyncCommand {
                     //try message.debugGrid(grid: domain.grid, flipLatidude: false, shift180Longitude: false)
                     //fatalError()
                     
-                    if let variable = variable as? DmiSurfaceVariable, [DmiSurfaceVariable.shortwave_radiation, .direct_radiation].contains(variable) {
-                        // GRIB unit says W/m2, but it's J/s
-                        grib2d.array.data.multiplyAdd(multiply: 1/3600, add: 0)
+                    if let variable = variable as? DmiSurfaceVariable {
+                        switch variable {
+                        case .shortwave_radiation, .direct_radiation:
+                            // GRIB unit says W/m2, but it's J/s
+                            grib2d.array.data.multiplyAdd(multiply: 1/3600, add: 0)
+                        case .cloud_top, .cloud_base:
+                            // Cloud base and top mark "no clouds" as NaN
+                            // Set it to 0 to work with conversion
+                            for i in grib2d.array.data.indices {
+                                if grib2d.array.data[i].isNaN {
+                                    grib2d.array.data[i] = 0
+                                }
+                            }
+                        default:
+                            break
+                        }
                     }
                     
                     switch unit {
@@ -234,7 +247,7 @@ struct DmiDownload: AsyncCommand {
                     }
                     
                     let fn = try writer.writeTemporary(compressionType: .p4nzdec256, scalefactor: variable.scalefactor, all: grib2d.array.data)
-                    return GenericVariableHandle(variable: variable, time: timestamp, member: member, fn: fn, skipHour0: stepType == "accum" || stepType == "avg")
+                    return GenericVariableHandle(variable: variable, time: timestamp, member: member, fn: fn)
                 }.collect().compactMap({$0})
                 
                 previous = previousScoped
@@ -328,8 +341,8 @@ struct DmiDownload: AsyncCommand {
             return DmiSurfaceVariable.temperature_150m
         case ("t", "heightAboveGround", "250"):
             return DmiSurfaceVariable.temperature_250m
-        case ("sd", "heightAboveGround", "0"):
-            return DmiSurfaceVariable.snow_depth_water_equivalent // ok
+        //case ("sd", "heightAboveGround", "0"):
+            //return DmiSurfaceVariable.snow_depth_water_equivalent // ok
         case ("grad", "heightAboveGround", "0"):
             return DmiSurfaceVariable.shortwave_radiation // ok
         case ("dswrf", "heightAboveGround", "0"):
